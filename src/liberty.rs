@@ -9,6 +9,7 @@
 use std::{
     fmt,
     ops::{Deref, DerefMut},
+    vec,
 };
 
 use indexmap::IndexMap;
@@ -84,7 +85,7 @@ pub enum Attribute {
 pub struct Group {
     pub type_: String,
     pub name: String,
-    pub attributes: IndexMap<String, Attribute>,
+    pub attributes: IndexMap<String, Vec<Attribute>>,
     pub subgroups: Vec<Group>,
 }
 
@@ -102,15 +103,29 @@ impl Group {
     /// Convert an AST [GroupItem::Group] variant into a [Group] struct
     pub fn from_group_item(group_item: GroupItem) -> Self {
         let (type_, name, items) = group_item.group();
-        let mut attributes: IndexMap<String, Attribute> = IndexMap::new();
+        let mut attributes: IndexMap<String, Vec<Attribute>> = IndexMap::new();
         let mut subgroups = vec![];
         for item in items {
             match item {
                 GroupItem::SimpleAttr(name, value) => {
-                    attributes.insert(name, Attribute::Simple(value));
+                    if attributes.contains_key(&name) {
+                        attributes
+                            .get_mut(&name)
+                            .unwrap()
+                            .push(Attribute::Simple(value));
+                    } else {
+                        attributes.insert(name, vec![Attribute::Simple(value)]);
+                    }
                 }
                 GroupItem::ComplexAttr(name, value) => {
-                    attributes.insert(name, Attribute::Complex(value));
+                    if attributes.contains_key(&name) {
+                        attributes
+                            .get_mut(&name)
+                            .unwrap()
+                            .push(Attribute::Complex(value));
+                    } else {
+                        attributes.insert(name, vec![Attribute::Complex(value)]);
+                    }
                 }
                 GroupItem::Group(type_, name, items) => {
                     subgroups
@@ -131,70 +146,76 @@ impl Group {
     pub fn into_group_item(self) -> GroupItem {
         let mut items: Vec<GroupItem> =
             Vec::with_capacity(self.attributes.len() + self.subgroups.len());
-        items.extend(self.attributes.into_iter().map(|(name, attr)| match attr {
-            Attribute::Simple(value) => GroupItem::SimpleAttr(name, value),
-            Attribute::Complex(value) => GroupItem::ComplexAttr(name, value),
+        items.extend(self.attributes.into_iter().flat_map(|(name, attrs)| {
+            attrs.into_iter().map(move |attr| match attr {
+                Attribute::Simple(value) => GroupItem::SimpleAttr(name.clone(), value),
+                Attribute::Complex(value) => GroupItem::ComplexAttr(name.clone(), value),
+            })
         }));
         items.extend(self.subgroups.into_iter().map(|g| g.into_group_item()));
         GroupItem::Group(self.type_, self.name, items)
     }
 
-    /// Get a complex attribute by name
+    /// Get first match of complex attribute by name
     pub fn complex_attribute(&self, name: &str) -> Option<&Vec<Value>> {
-        self.attributes.get(name).and_then(|attr| match attr {
-            Attribute::Complex(value) => Some(value),
-            _ => None,
+        self.attributes.get(name).and_then(|attrs| {
+            attrs.get(0).and_then(|attr| match attr {
+                Attribute::Complex(value) => Some(value),
+                _ => None,
+            })
         })
     }
 
-    /// Get a simple attribute by name
+    /// Get first match of simple attribute by name
     pub fn simple_attribute(&self, name: &str) -> Option<&Value> {
-        self.attributes.get(name).and_then(|attr| match attr {
-            Attribute::Simple(value) => Some(value),
-            _ => None,
+        self.attributes.get(name).and_then(|attrs| {
+            attrs.get(0).and_then(|attr| match attr {
+                Attribute::Simple(value) => Some(value),
+                _ => None,
+            })
         })
     }
 
     /// Iterate over the complex attributes
     pub fn iter_complex_attributes(&self) -> impl Iterator<Item = (&String, &Vec<Value>)> {
-        self.attributes
-            .iter()
-            .filter_map(|(name, attr)| match attr {
+        self.attributes.iter().flat_map(|(name, attrs)| {
+            attrs.iter().filter_map(move |attr| match attr {
                 Attribute::Complex(value) => Some((name, value)),
                 _ => None,
             })
+        })
     }
 
     /// Iterate over the complex attributes mutably
     pub fn iter_complex_attributes_mut(
         &mut self,
     ) -> impl Iterator<Item = (&String, &mut Vec<Value>)> {
-        self.attributes
-            .iter_mut()
-            .filter_map(|(name, attr)| match attr {
+        self.attributes.iter_mut().flat_map(|(name, attrs)| {
+            attrs.iter_mut().filter_map(move |attr| match attr {
                 Attribute::Complex(value) => Some((name, value)),
                 _ => None,
             })
+        })
     }
 
     /// Iterate over the simple attributes
     pub fn iter_simple_attributes(&self) -> impl Iterator<Item = (&String, &Value)> {
-        self.attributes
-            .iter()
-            .filter_map(|(name, attr)| match attr {
+        self.attributes.iter().flat_map(|(name, attrs)| {
+            attrs.iter().filter_map(move |attr| match attr {
                 Attribute::Simple(value) => Some((name, value)),
                 _ => None,
             })
+        })
     }
 
     /// Iterate over the simple attributes mutably
     pub fn iter_simple_attributes_mut(&mut self) -> impl Iterator<Item = (&String, &mut Value)> {
-        self.attributes
-            .iter_mut()
-            .filter_map(|(name, attr)| match attr {
+        self.attributes.iter_mut().flat_map(|(name, attrs)| {
+            attrs.iter_mut().filter_map(move |attr| match attr {
                 Attribute::Simple(value) => Some((name, value)),
                 _ => None,
             })
+        })
     }
 
     /// Iterate over the subgroups of a given type
