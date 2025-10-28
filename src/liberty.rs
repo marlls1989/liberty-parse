@@ -28,7 +28,7 @@ impl Liberty {
         Liberty(
             ast.0
                 .into_iter()
-                .map(|g| Group::from_group_item(g))
+                .map(Group::from_group_item)
                 .collect(),
         )
     }
@@ -129,7 +129,7 @@ impl Group {
                 }
                 GroupItem::Group(type_, name, items) => {
                     subgroups
-                        .push(Group::from_group_item(GroupItem::Group(type_, name, items)).into());
+                        .push(Group::from_group_item(GroupItem::Group(type_, name, items)));
                 }
                 _ => {}
             }
@@ -159,7 +159,7 @@ impl Group {
     /// Get first match of complex attribute by name
     pub fn complex_attribute(&self, name: &str) -> Option<&Vec<Value>> {
         self.attributes.get(name).and_then(|attrs| {
-            attrs.get(0).and_then(|attr| match attr {
+            attrs.first().and_then(|attr| match attr {
                 Attribute::Complex(value) => Some(value),
                 _ => None,
             })
@@ -169,7 +169,7 @@ impl Group {
     /// Get first match of simple attribute by name
     pub fn simple_attribute(&self, name: &str) -> Option<&Value> {
         self.attributes.get(name).and_then(|attrs| {
-            attrs.get(0).and_then(|attr| match attr {
+            attrs.first().and_then(|attr| match attr {
                 Attribute::Simple(value) => Some(value),
                 _ => None,
             })

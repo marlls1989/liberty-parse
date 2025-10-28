@@ -35,7 +35,7 @@ pub use ast::{ParseResult, Value};
 pub use error::Error;
 
 /// Parse a string slice into a [liberty::Liberty] struct
-pub fn parse_lib(contents: &str) -> ParseResult<liberty::Liberty> {
+pub fn parse_lib(contents: &str) -> ParseResult<'_, liberty::Liberty> {
     Ok(liberty::Liberty::from_ast(ast::LibertyAst::from_string(
         contents,
     )?))

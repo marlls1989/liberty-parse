@@ -15,7 +15,7 @@ use nom::{
     IResult,
 };
 
-fn underscore_tag<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str, E> {
+fn underscore_tag<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
         "underscore_tag",
         recognize(preceded(
@@ -25,7 +25,7 @@ fn underscore_tag<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &
     )(input)
 }
 
-fn quoted_floats<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Vec<f64>, E> {
+fn quoted_floats<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Vec<f64>, E> {
     context(
         "quoted floats",
         preceded(
@@ -41,7 +41,7 @@ fn quoted_floats<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Ve
     )(input)
 }
 
-fn expression<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str, E> {
+fn expression<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     context("expression", move |input| {
         recognize(separated_list(
             // operator
@@ -65,18 +65,18 @@ fn expression<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str,
     })(input)
 }
 
-fn quoted_string<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str, E> {
+fn quoted_string<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
         "quoted string",
         preceded(char('\"'), cut(terminated(is_not("\""), char('\"')))),
     )(input)
 }
 
-fn boolean<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, bool, E> {
+fn boolean<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
     map_res(alpha1, |s: &str| s.parse::<bool>())(input)
 }
 
-fn simple_attr_value<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Value, E> {
+fn simple_attr_value<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
     context(
         "simple attr value",
         preceded(
@@ -92,7 +92,7 @@ fn simple_attr_value<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str
     )(input)
 }
 
-fn simple_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, GroupItem, E> {
+fn simple_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, GroupItem, E> {
     context(
         "simple attr",
         map(
@@ -109,7 +109,7 @@ fn simple_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str,
 
 fn complex_attribute_values<'a, E: ParseError<&'a str>>(
     input: &'a str,
-) -> IResult<&str, Vec<Value>, E> {
+) -> IResult<&'a str, Vec<Value>, E> {
     context(
         "complex values",
         delimited(
@@ -137,7 +137,7 @@ fn complex_attribute_values<'a, E: ParseError<&'a str>>(
     )(input)
 }
 
-fn complex_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, GroupItem, E> {
+fn complex_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, GroupItem, E> {
     context(
         "complex attr",
         map(
@@ -151,7 +151,7 @@ fn complex_attribute<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str
     )(input)
 }
 
-fn comment<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str, E> {
+fn comment<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
         "comment",
         recognize(delimited(tag("/*"), take_until("*/"), tag("*/"))),
@@ -160,7 +160,7 @@ fn comment<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, &str, E>
 
 fn parse_group_body<'a, E: ParseError<&'a str>>(
     input: &'a str,
-) -> IResult<&str, Vec<GroupItem>, E> {
+) -> IResult<&'a str, Vec<GroupItem>, E> {
     context(
         "group body",
         fold_many0(
@@ -184,7 +184,7 @@ fn parse_group_body<'a, E: ParseError<&'a str>>(
         ),
     )(input)
 }
-fn parse_group<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, GroupItem, E> {
+fn parse_group<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, GroupItem, E> {
     context(
         "parsing group",
         map(
@@ -200,7 +200,7 @@ fn parse_group<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Grou
                                     multispace0,
                                     alt((
                                         map(quoted_string, |s| format!("\"{}\"", s)),
-                                        map(underscore_tag, |s| format!("{}", s)),
+                                        map(underscore_tag, |s| s.to_string()),
                                         map(double, |s| format!("{}", GPoint(s))),
                                         map(quoted_floats, |s| {
                                             format!(
@@ -231,7 +231,7 @@ fn parse_group<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Grou
     )(input)
 }
 
-pub fn parse_libs<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&str, Vec<GroupItem>, E> {
+pub fn parse_libs<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Vec<GroupItem>, E> {
     context(
         "parse_libs",
         all_consuming(terminated(

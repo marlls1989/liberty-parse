@@ -29,7 +29,7 @@ impl LibertyAst {
     }
 
     /// Parse a Liberty file's string representation into the AST
-    pub fn from_string(input: &str) -> ParseResult<Self> {
+    pub fn from_string(input: &str) -> ParseResult<'_, Self> {
         parse_libs::<VerboseError<&str>>(input)
             .map_err(|e| Error::new(input, e))
             .map(|(_, libs)| LibertyAst::new(libs))
@@ -65,7 +65,7 @@ fn items_to_string(items: &[GroupItem], level: usize) -> String {
         .iter()
         .map(|item| match item {
             GroupItem::SimpleAttr(name, value) => {
-                format!("{}{} : {};", indent, name, value.to_string())
+                format!("{}{} : {};", indent, name, value)
             }
             GroupItem::ComplexAttr(name, values) => format!(
                 "{}{} ({});",
@@ -161,7 +161,7 @@ impl fmt::Display for Value {
             Value::FloatGroup(v) => write!(
                 f,
                 "\"{}\"",
-                format!("{}", v.iter().map(|x| GPoint(*x)).format(", "))
+                v.iter().map(|x| GPoint(*x)).format(", ")
             ),
         }
     }
